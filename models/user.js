@@ -15,6 +15,10 @@ const UserScheme = new mongoose.Schema(
         state: {
             type: ['NOT_VALIDATED', 'VALIDATED'],
             default: 'NOT_VALIDATED'
+        },
+        role : {
+            type: ['user', 'admin'],
+            default: 'user'
         }
     },
     {

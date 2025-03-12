@@ -10,7 +10,7 @@ const registerUser = (req, res) => {
     const user = {
         email: email,
         password: password,
-        code: "0000",
+        code: Math.floor(100000 + Math.random() * 899999).toString(), // Genera un número aleatorio entre 100000 y 999999
     };
 
     userModel.create(user);
