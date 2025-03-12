@@ -1,6 +1,7 @@
 /* Dependencias */
 const express = require('express');
 const app = express();
+const dbConnect = require('./config/mongo.js');
 
 /* Implementar variables de entorno */
 require('dotenv').config();
@@ -9,6 +10,8 @@ require('dotenv').config();
 
 app.use(express.json()); // Para poder usar req.body
 
+
+dbConnect();
 app.use("/api", require("./routes/index.js"));
 
 app.get("/", (req, res) => {
