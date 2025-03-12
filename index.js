@@ -5,6 +5,9 @@ const app = express();
 /* Implementar variables de entorno */
 require('dotenv').config();
 
+/* Middlewares */
+
+app.use(express.json()); // Para poder usar req.body
 
 app.use("/api", require("./routes/index.js"));
 

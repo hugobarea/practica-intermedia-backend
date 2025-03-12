@@ -1,13 +1,9 @@
+/* Dependencias */
 const express = require("express");
 const router = express.Router();
+const { registerUser, loginUser } = require('../controllers/user.js');
 
-router.post("/login", (req, res) => {
-    res.send("Recibido");
-});
-
-/* */
-router.post("/login", (req, res) => {
-    res.send("Recibido");
-});
+router.post("/login", loginUser);
+router.post("/register", registerUser);
 
 module.exports = router;
