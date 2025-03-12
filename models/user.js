@@ -12,12 +12,13 @@ const UserScheme = new mongoose.Schema(
             type: Number,
             default: 0
         },
-        state: {
-            type: ['NOT_VALIDATED', 'VALIDATED'],
-            default: 'NOT_VALIDATED'
+        status: {
+            type: Number,
+            default: 0
         },
         role : {
-            type: ['user', 'admin'],
+            type: String,
+            enum: ['user', 'admin'],
             default: 'user'
         }
     },
