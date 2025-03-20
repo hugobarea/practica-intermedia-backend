@@ -1,6 +1,6 @@
 /* Dependencias */
 const { userModel } = require('../models');
-const { tokenSign } = require('../utils/handleJwt.js');
+const { tokenSign, verifyToken } = require('../utils/handleJwt.js');
 const { encrypt } = require('../utils/handlePassword.js');
 
 // Necesita email y password
@@ -37,8 +37,28 @@ const registerUser = async (req, res) => {
     res.status(201).send(data);
 }
 
+const validateUser = async (req, res) => {
+
+    /* Sacamos el token JWT y el código que ha pasado el usuario */
+    const token = req.headers.authorization.split(' ').pop();
+    const dataToken = await verifyToken(token);
+    const { code } = req.body; 
+
+    const user = await userModel.findById(dataToken._id);
+
+    /* Verificamos que el código que ha pasado el usuario sea igual que el que hay guardado en base de datos */
+    if(code === user.code) {
+        await userModel.findByIdAndUpdate(dataToken._id, { status: 1 });
+        res.status(200).send("ACK");
+    } else {
+        /* Si no coincide incrementamos los attempts en 1 */
+        await userModel.findByIdAndUpdate(dataToken._id, { $inc: { attempts: 1 } });
+        res.status(400).send("INVALID_CODE");
+    }
+}
+
 const loginUser = (req, res) => {
     res.send("Controlador implementado");
 }
 
-module.exports = { registerUser, loginUser }
+module.exports = { registerUser, validateUser, loginUser }
