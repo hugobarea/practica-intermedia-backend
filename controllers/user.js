@@ -1,7 +1,7 @@
 /* Dependencias */
 const { userModel } = require('../models');
 const { tokenSign, verifyToken } = require('../utils/handleJwt.js');
-const { encrypt } = require('../utils/handlePassword.js');
+const { encrypt, compare } = require('../utils/handlePassword.js');
 
 // Necesita email y password
 const registerUser = async (req, res) => {
@@ -57,8 +57,41 @@ const validateUser = async (req, res) => {
     }
 }
 
-const loginUser = (req, res) => {
-    res.send("Controlador implementado");
+const loginUser = async (req, res) => {
+
+    const { email, password } = req.body;
+
+    const user = await userModel.findOne({ email: email });
+
+    if(user == null) {
+        res.status(404).send("NOT FOUND");
+        return;
+    }
+
+    if(user.status != 1) {
+        res.status(401).send("NOT VALIDATED");
+        return;
+    }
+
+    if(!await compare(password, user.password)) {
+        res.status(404).send("NOT FOUND");
+        return;
+    }
+
+    /* Si hemos llegado aqui ya sabemos que hay un usuario valido */
+    
+    const token = await tokenSign(user);
+    const data = {
+        token: token,
+        user: {
+            email: user.email,
+            role: user.role,
+            _id: user._id,
+            name: user.name /* solo lo devuelve si lo tiene, un usuario registrado no tiene por que tener un name */
+        }
+    };
+
+    res.status(200).send(data);
 }
 
 module.exports = { registerUser, validateUser, loginUser }
