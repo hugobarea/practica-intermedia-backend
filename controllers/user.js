@@ -3,6 +3,14 @@ const { userModel } = require('../models');
 const { tokenSign, verifyToken } = require('../utils/handleJwt.js');
 const { encrypt, compare } = require('../utils/handlePassword.js');
 
+
+const getUser = async (req, res) => {
+    const token = req.headers.authorization.split(' ').pop();
+    const dataToken = await verifyToken(token);
+    const user = await userModel.findById(dataToken._id).select("-password");
+    res.status(200).send(user);
+}
+
 // Necesita email y password
 const registerUser = async (req, res) => {
     
@@ -113,4 +121,4 @@ const updateUser = async (req, res) => {
 
 }
 
-module.exports = { registerUser, validateUser, loginUser, updateUser }
+module.exports = { getUser, registerUser, validateUser, loginUser, updateUser }
