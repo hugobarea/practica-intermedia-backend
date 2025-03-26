@@ -20,7 +20,10 @@ const UserScheme = new mongoose.Schema(
             type: String,
             enum: ['user', 'admin'],
             default: 'user'
-        }
+        },
+        name: String,
+        surnames: String,
+        nif: String
     },
     {
         timestamps: true,

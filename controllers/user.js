@@ -79,7 +79,7 @@ const loginUser = async (req, res) => {
     }
 
     /* Si hemos llegado aqui ya sabemos que hay un usuario valido */
-    
+
     const token = await tokenSign(user);
     const data = {
         token: token,
@@ -94,4 +94,23 @@ const loginUser = async (req, res) => {
     res.status(200).send(data);
 }
 
-module.exports = { registerUser, validateUser, loginUser }
+const updateUser = async (req, res) => {
+
+        /* Sacamos los campos de la petición */
+        const { email, name, surnames, nif } = req.body;
+
+        /* Sacamos el token JWT que ha pasado el usuario */
+        const token = req.headers.authorization.split(' ').pop();
+        const dataToken = await verifyToken(token);
+
+        /* Actualizamos el usuario con los datos nuevos y lo enviamos */
+        const updatedUser = await userModel.findByIdAndUpdate(dataToken._id, { name: name, surnames: surnames, nif: nif},
+            {new: true}, /* para asegurarnos que devuelve el usuario actualizado*/
+        ).select("-password");
+
+        console.log(updatedUser);
+        res.status(200).send(updatedUser);
+
+}
+
+module.exports = { registerUser, validateUser, loginUser, updateUser }
