@@ -121,4 +121,16 @@ const updateUser = async (req, res) => {
 
 }
 
-module.exports = { getUser, registerUser, validateUser, loginUser, updateUser }
+const deleteUser = async (req, res) => {
+    const soft_del = req.query.soft;
+
+    /* Si tiene valor false, hacemos el hard. De lo contrario, lo hacemos soft para asegurar */
+    if(soft_del === "false") {
+        console.log("Borrado hard");
+    } else {
+        console.log("Borrado soft");
+    }
+    res.status(200).send();
+}
+
+module.exports = { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser }
