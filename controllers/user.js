@@ -124,13 +124,17 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
     const soft_del = req.query.soft;
 
+    const token = req.headers.authorization.split(' ').pop();
+    const dataToken = await verifyToken(token);
+
     /* Si tiene valor false, hacemos el hard. De lo contrario, lo hacemos soft para asegurar */
     if(soft_del === "false") {
-        console.log("Borrado hard");
+        await userModel.deleteOne({ _id : dataToken._id });
+        res.status(200).send("HARD_DEL");
     } else {
-        console.log("Borrado soft");
+        await userModel.delete({ _id : dataToken._id } );
+        res.status(200).send("SOFT_DEL");
     }
-    res.status(200).send();
 }
 
 module.exports = { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser }
