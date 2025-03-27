@@ -2,6 +2,9 @@
 const { userModel } = require('../models');
 const { tokenSign, verifyToken } = require('../utils/handleJwt.js');
 const { encrypt, compare } = require('../utils/handlePassword.js');
+const { uploadToPinata } = require('../utils/handleUploadIPFS.js');
+
+require('dotenv').config();
 
 
 const getUser = async (req, res) => {
@@ -137,4 +140,18 @@ const deleteUser = async (req, res) => {
     }
 }
 
-module.exports = { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser }
+const addUserLogo = async (req, res) => {
+    
+    const token = req.headers.authorization.split(' ').pop();
+    const dataToken = await verifyToken(token);
+    
+    const fileBuffer = req.file.buffer;
+    const fileName = req.file.originalname;
+    const pinataResponse = await uploadToPinata(fileBuffer, fileName);
+    const ipfsFile = pinataResponse.IpfsHash;
+    const ipfs = `https://${process.env.PINATA_GATEWAY_URL}/ipfs/${ipfsFile}`
+    const data = await userModel.findByIdAndUpdate(dataToken._id, { logo: ipfs }, { new: true}).select("-password");
+    res.status(200).send(data);
+}
+
+module.exports = { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser, addUserLogo }

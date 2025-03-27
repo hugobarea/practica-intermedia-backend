@@ -24,7 +24,8 @@ const UserScheme = new mongoose.Schema(
         },
         name: String,
         surnames: String,
-        nif: String
+        nif: String,
+        logo: String
     },
     {
         timestamps: true,
