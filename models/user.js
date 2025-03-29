@@ -25,7 +25,16 @@ const UserScheme = new mongoose.Schema(
         name: String,
         surnames: String,
         nif: String,
-        logo: String
+        logo: String,
+        company: {
+            name: String,
+            cif: String,
+            street: String,
+            number: Number,
+            postal: Number,
+            city: String,
+            province: String
+        }
     },
     {
         timestamps: true,

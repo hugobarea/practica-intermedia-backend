@@ -154,4 +154,18 @@ const addUserLogo = async (req, res) => {
     res.status(200).send(data);
 }
 
-module.exports = { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser, addUserLogo }
+const addCompany = async (req, res) => {
+
+    const { company } = req.body;
+
+    const token = req.headers.authorization.split(' ').pop();
+    const dataToken = await verifyToken(token);
+
+    const data = await userModel.findByIdAndUpdate(dataToken._id, { company: company }, { new: true});
+
+    res.status(200).send("ACK");
+
+}
+
+
+module.exports = { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser, addUserLogo, addCompany }
