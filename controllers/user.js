@@ -167,5 +167,47 @@ const addCompany = async (req, res) => {
 
 }
 
+const setRecoverCode = async (req, res) => {
+    const { email } = req.body;
 
-module.exports = { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser, addUserLogo, addCompany }
+    const updatedUser = await userModel.findOneAndUpdate({email: email},
+        {reset_code: Math.floor(100000 + Math.random() * 899999).toString()},{ new: true, select: '-password' });
+    
+    res.status(200).send({ user: updatedUser });
+
+}
+
+const validatePassReset = async (req, res) => {
+    const { email, code } = req.body;
+
+
+    // Meto gestion de errores mas adelante
+    const user = await userModel.findOne({ email: email });
+
+    /* Verificar codigo con base de datos */
+    if(code === user.reset_code) {
+        await userModel.findOneAndUpdate({email: email}, { reset_code: null, reset_attempts:0 }); /* anulamos el codigo de reseteo */
+        const token = tokenSign(user);
+        res.status(200).send({ token : token });
+    } else {
+        await userModel.findOneAndUpdate({email: email}, { $inc: { reset_attempts: 1 } });
+        res.status(400).send("INVALID_RESET_CODE");
+    }
+
+}
+
+const changePassword = async (req, res) => {
+
+    /* Sacamos el id del token */
+    const token = req.headers.authorization.split(' ').pop();
+    const dataToken = await verifyToken(token);
+
+    /* Y la pass del body */
+    const { password } = req.body; 
+    const updatedUser = await userModel.findByIdAndUpdate(dataToken._id, { password: await encrypt(password)}, { new: true });
+    res.status(200).send("ACK");
+    
+
+}
+
+module.exports = { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser, addUserLogo, addCompany, setRecoverCode, validatePassReset, changePassword }

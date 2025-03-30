@@ -34,6 +34,11 @@ const UserScheme = new mongoose.Schema(
             postal: Number,
             city: String,
             province: String
+        },
+        reset_code: String,
+        reset_attempts: {
+            type: Number,
+            default: 0
         }
     },
     {
