@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const { uploadMiddlewareMemory } = require("../utils/handleStorage.js");
-const { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser, addUserLogo, addCompany, setRecoverCode, validatePassReset, changePassword } = require('../controllers/user.js');
+const { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser, addUserLogo, addCompany, setRecoverCode, validatePassReset, changePassword, inviteGuest } = require('../controllers/user.js');
 
 router.get("/", getUser);
 router.delete("/", deleteUser);
@@ -21,5 +21,6 @@ router.patch("/password", changePassword); // Endpoint para cambiar pass (tenien
 router.patch("/logo", uploadMiddlewareMemory.single("logo"), addUserLogo);
 router.patch("/company", addCompany);
 
+router.post("/invite", inviteGuest);
 
 module.exports = router;

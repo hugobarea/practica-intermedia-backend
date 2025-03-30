@@ -210,4 +210,18 @@ const changePassword = async (req, res) => {
 
 }
 
-module.exports = { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser, addUserLogo, addCompany, setRecoverCode, validatePassReset, changePassword }
+const inviteGuest = async (req, res) => {
+    /* En los docs de Ricardo no viene muy claro, pero interpreto que un invitado se registra como
+    guest sin necesidad de pass y simplemente recibe un token para una especie de sesion temporal, haciendo que un user
+    tenga que invitarle cada vez que quiera acceder a la plataforma */
+    
+    const guestUser = req.body;
+    guestUser.role = 'guest';
+
+    const createdGuest = await userModel.create(guestUser);
+    const token = await tokenSign(createdGuest);
+    res.status(200).send({ token: token, user: createdGuest })
+    
+}
+
+module.exports = { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser, addUserLogo, addCompany, setRecoverCode, validatePassReset, changePassword, inviteGuest }
