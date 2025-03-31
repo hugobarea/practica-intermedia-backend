@@ -1,0 +1,124 @@
+### POST /REGISTER
+POST http://localhost:3000/api/user/register
+Content-Type: application/json
+
+{
+  "email": "ultimo_test@test.com",
+  "password": "12345678"
+}
+
+### PUT /VALIDATION
+PUT http://localhost:3000/api/user/validation
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2VhODZkYzAyMTFhN2FjNDQ4Y2QzMGEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc0MzQyMzE5NiwiZXhwIjoxNzQzNDMwMzk2fQ.HiP27-lYDwYXIocPtYHW6T7bxnCbgjF-70g4nDYwYQg
+
+{
+  "code": "790314"
+}
+
+### POST /LOGIN
+POST http://localhost:3000/api/user/login
+Content-Type: application/json
+
+{
+  "email": "ultimo_test@test.com",
+  "password": "12345678"
+}
+
+### GET /USER
+GET http://localhost:3000/api/user/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2VhODZkYzAyMTFhN2FjNDQ4Y2QzMGEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc0MzQyMzQ1NywiZXhwIjoxNzQzNDMwNjU3fQ.AT_ou-JYWM_dTQvvNWVPRX6OE5XhxqKx3NW4GnQLe-U
+
+
+### PUT /REGISTER
+PUT http://localhost:3000/api/user/register
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2VhODZkYzAyMTFhN2FjNDQ4Y2QzMGEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc0MzQyMzQ1NywiZXhwIjoxNzQzNDMwNjU3fQ.AT_ou-JYWM_dTQvvNWVPRX6OE5XhxqKx3NW4GnQLe-U
+
+{
+  "name": "Hugo",
+  "surnames": "Bareaa",
+  "nif": "12345678A"
+}
+
+### PATCH /COMPANY
+PATCH http://localhost:3000/api/user/company
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2VhODZkYzAyMTFhN2FjNDQ4Y2QzMGEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc0MzQyMzQ1NywiZXhwIjoxNzQzNDMwNjU3fQ.AT_ou-JYWM_dTQvvNWVPRX6OE5XhxqKx3NW4GnQLe-U
+
+{
+  "company": {
+    "name": "Servitop, SL.",
+    "cif": "BXXXXXXXX",
+    "number": 22,
+    "street": "Carlos V",
+    "postal": 28936,
+    "city": "Móstoles",
+    "province": "Madrid"
+  }
+}
+
+### /PATCH /LOGO
+PATCH http://localhost:3000/api/user/logo
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2VhODZkYzAyMTFhN2FjNDQ4Y2QzMGEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc0MzQyMzQ1NywiZXhwIjoxNzQzNDMwNjU3fQ.AT_ou-JYWM_dTQvvNWVPRX6OE5XhxqKx3NW4GnQLe-U
+Content-Type: multipart/form-data; boundary=----boundary123
+
+------boundary123
+Content-Disposition: form-data; name="logo"; filename="test_img.png"
+Content-Type: image/png
+
+< ./test_img.png
+------boundary123--
+
+### POST /RECOVER
+POST http://localhost:3000/api/user/recover
+Content-Type: application/json
+
+{
+  "email": "ultimo_test@test.com"
+}
+
+### POST /VALIDATION
+POST http://localhost:3000/api/user/validation
+Content-Type: application/json
+
+{
+  "email": "ultimo_test@test.com",
+  "code": "247022"
+}
+
+### PATCH /PASSWORD
+PATCH http://localhost:3000/api/user/password
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2VhODZkYzAyMTFhN2FjNDQ4Y2QzMGEiLCJyb2xlIjoidXNlciIsImlhdCI6MTc0MzQyMzk3OCwiZXhwIjoxNzQzNDMxMTc4fQ.uLvI8A5aB4gjsu9rh_V4QDU2PnXbsrLn4LR1DcCAOC0
+
+{
+  "password": "test12345678"
+}
+
+### POST /INVITE
+POST http://localhost:3000/api/user/invite
+Content-Type: application/json
+
+{
+  "name": "Manuel",
+  "surnames": "Pérez Gómez",
+  "email": "guest4@gmail.com",
+  "company": {
+    "name": "Servitop, SL.",
+    "cif": "BXXXXXXXX",
+    "street": "Carlos V",
+    "number": 22,
+    "postal": 28936,
+    "city": "Móstoles",
+    "province": "Madrid"
+  }
+}
+
+### DELETE /USER SOFT
+DELETE http://localhost:3000/api/user/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2VhOGEyZDViMDAwNTIyOTlhZmRkOTciLCJyb2xlIjoiZ3Vlc3QiLCJpYXQiOjE3NDM0MjQwNDUsImV4cCI6MTc0MzQzMTI0NX0.F9_yKRiIqPCcoy4Te58lvf1ywMljs12BttSQ7uvBWqY
+
+### DELETE /USER HARD
+DELETE http://localhost:3000/api/user/?soft=false
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2VhOGEyZDViMDAwNTIyOTlhZmRkOTciLCJyb2xlIjoiZ3Vlc3QiLCJpYXQiOjE3NDM0MjQwNDUsImV4cCI6MTc0MzQzMTI0NX0.F9_yKRiIqPCcoy4Te58lvf1ywMljs12BttSQ7uvBWqY

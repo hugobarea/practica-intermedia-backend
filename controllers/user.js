@@ -1,244 +1,307 @@
 /* Dependencias */
 const { userModel } = require('../models');
-const { matchedData } = require("express-validator")
+const { matchedData } = require("express-validator");
 const { tokenSign, verifyToken } = require('../utils/handleJwt.js');
 const { encrypt, compare } = require('../utils/handlePassword.js');
 const { uploadToPinata } = require('../utils/handleUploadIPFS.js');
+const handleHttpError = require('../utils/handleError.js');
 
 require('dotenv').config();
 
-
 const getUser = async (req, res) => {
-    const token = req.headers.authorization.split(' ').pop();
-    const dataToken = await verifyToken(token);
-    const user = await userModel.findById(dataToken._id).select("-password");
-    res.status(200).send(user);
+    try {
+        const token = req.headers.authorization.split(' ').pop();
+        const dataToken = await verifyToken(token);
+        const user = await userModel.findById(dataToken._id).select("-password");
+        res.status(200).send(user);
+    } catch(err) {
+        handleHttpError(res, "ERR_GET_USER", 500);
+    }
 }
 
-// Necesita email y password
 const registerUser = async (req, res) => {
-    const { email, password } = matchedData(req);
-    
-    /* Se crea el objeto user, los intentos y el estado se ponen por defecto */
-    const user_db = {
-        email: email,
-        password: await encrypt(password),
-        code: Math.floor(100000 + Math.random() * 899999).toString(), // Genera un número aleatorio entre 100000 y 999999
-    };
+    try {
+        const { email, password } = matchedData(req);
+        
+        /* Se crea el objeto user, los intentos y el estado se ponen por defecto */
+        const user_db = {
+            email: email,
+            password: await encrypt(password),
+            code: Math.floor(100000 + Math.random() * 899999).toString(),
+        };
 
-    /* Nos aseguramos de que no exista un usuario con el mismo mail */
-    if(await userModel.findOne({ email: req.email})) {
-        res.status(409).send("ALREADY_REGISTERED");
-        return;
-    }
-
-    /* Creamos el usuario en base de datos y la respuesta */
-    const createdUser = await userModel.create(user_db);
-    const token = await tokenSign(createdUser);
-
-    const data = {
-        token: token,
-        user: {
-            email: createdUser.email,
-            status: createdUser.status,
-            role: createdUser.role,
-            _id: createdUser._id
+        /* Nos aseguramos de que no exista un usuario con el mismo mail */
+        const existingUser = await userModel.findOne({ email });
+        if(existingUser) {
+            handleHttpError(res, "ALREADY_REGISTERED", 409);
+            return;
         }
-    };
-    res.status(201).send(data);
+
+        /* Creamos el usuario en base de datos y la respuesta */
+        const createdUser = await userModel.create(user_db);
+        const token = await tokenSign(createdUser);
+
+        const data = {
+            token: token,
+            user: {
+                email: createdUser.email,
+                status: createdUser.status,
+                role: createdUser.role,
+                _id: createdUser._id
+            }
+        };
+        res.status(201).send(data);
+    } catch(err) {
+        handleHttpError(res, "ERR_REGISTER_USER", 500);
+    }
 }
 
 const validateUser = async (req, res) => {
-    /* Sacamos el token JWT y el código que ha pasado el usuario */
-    const token = req.headers.authorization.split(' ').pop();
+    try {
+        /* Sacamos el token JWT y el código que ha pasado el usuario */
+        const token = req.headers.authorization.split(' ').pop();
+        const { code } = matchedData(req);
+        const dataToken = await verifyToken(token);
 
-    const { code } = matchedData(req);
-    const dataToken = await verifyToken(token);
+        const user = await userModel.findById(dataToken._id);
 
-    const user = await userModel.findById(dataToken._id);
-
-    /* Verificamos que el código que ha pasado el usuario sea igual que el que hay guardado en base de datos */
-    if(code === user.code) {
-        await userModel.findByIdAndUpdate(dataToken._id, { status: 1 });
-        res.status(200).send("ACK");
-    } else {
-        /* Si no coincide incrementamos los attempts en 1 */
-        await userModel.findByIdAndUpdate(dataToken._id, { $inc: { attempts: 1 } });
-        res.status(400).send("INVALID_CODE");
+        /* Verificamos que el código que ha pasado el usuario sea igual que el que hay guardado en base de datos */
+        if(code === user.code) {
+            await userModel.findByIdAndUpdate(dataToken._id, { status: 1 });
+            res.status(200).send("ACK");
+        } else {
+            /* Si no coincide incrementamos los attempts en 1 */
+            await userModel.findByIdAndUpdate(dataToken._id, { $inc: { attempts: 1 } });
+            handleHttpError(res, "INVALID_CODE", 400);
+        }
+    } catch(err) {
+        handleHttpError(res, "ERR_VALIDATE_USER", 500);
     }
 }
 
 const loginUser = async (req, res) => {
+    try {
+        req = matchedData(req);
+        const { email, password } = req;
 
-    req = matchedData(req);
-    const { email, password } = req;
+        const user = await userModel.findOne({ email: email });
 
-    const user = await userModel.findOne({ email: email });
-
-    if(user == null) {
-        res.status(404).send("NOT FOUND");
-        return;
-    }
-
-    if(user.status != 1) {
-        res.status(401).send("NOT VALIDATED");
-        return;
-    }
-
-    if(!await compare(password, user.password)) {
-        res.status(404).send("NOT FOUND");
-        return;
-    }
-
-    /* Si hemos llegado aqui ya sabemos que hay un usuario valido */
-
-    const token = await tokenSign(user);
-    const data = {
-        token: token,
-        user: {
-            email: user.email,
-            role: user.role,
-            _id: user._id,
-            name: user.name /* solo lo devuelve si lo tiene, un usuario registrado no tiene por que tener un name */
+        if(user == null) {
+            handleHttpError(res, "NOT_FOUND", 404);
+            return;
         }
-    };
 
-    res.status(200).send(data);
+        if(user.status != 1) {
+            handleHttpError(res, "NOT_VALIDATED", 401);
+            return;
+        }
+
+        if(!await compare(password, user.password)) {
+            handleHttpError(res, "INVALID_CREDENTIALS", 401);
+            return;
+        }
+
+        /* Si hemos llegado aqui ya sabemos que hay un usuario valido */
+        const token = await tokenSign(user);
+        const data = {
+            token: token,
+            user: {
+                email: user.email,
+                role: user.role,
+                _id: user._id,
+                name: user.name
+            }
+        };
+
+        res.status(200).send(data);
+    } catch(err) {
+        handleHttpError(res, "ERR_LOGIN_USER", 500);
+    }
 }
 
 const updateUser = async (req, res) => {
-    /* Sacamos el token JWT que ha pasado el usuario */
-    const token = req.headers.authorization.split(' ').pop();
-    const dataToken = await verifyToken(token);
+    try {
+        /* Sacamos el token JWT que ha pasado el usuario */
+        const token = req.headers.authorization.split(' ').pop();
+        const dataToken = await verifyToken(token);
 
-    /* Sacamos los campos de la peticion, el email lo quito ya que con el token no haria falta */
-    const { name, surnames, nif } = matchedData(req);
+        /* Sacamos los campos de la peticion, el email lo quito ya que con el token no haria falta */
+        const { name, surnames, nif } = matchedData(req);
 
-    /* Actualizamos el usuario con los datos nuevos y lo enviamos */
-    const updatedUser = await userModel.findByIdAndUpdate(dataToken._id, { name: name, surnames: surnames, nif: nif},
-        {new: true}, /* para asegurarnos que devuelve el usuario actualizado*/
-    ).select("-password");
+        /* Actualizamos el usuario con los datos nuevos y lo enviamos */
+        const updatedUser = await userModel.findByIdAndUpdate(dataToken._id, 
+            { name: name, surnames: surnames, nif: nif },
+            { new: true }
+        ).select("-password");
 
-    console.log(updatedUser);
-    res.status(200).send(updatedUser);
-
+        res.status(200).send(updatedUser);
+    } catch(err) {
+        handleHttpError(res, "ERR_UPDATE_USER", 500);
+    }
 }
 
 const deleteUser = async (req, res) => {
-    const soft_del = req.query.soft;
+    try {
+        const soft_del = req.query.soft;
+        const token = req.headers.authorization.split(' ').pop();
+        const dataToken = await verifyToken(token);
 
-    const token = req.headers.authorization.split(' ').pop();
-    const dataToken = await verifyToken(token);
-
-    /* Si tiene valor false, hacemos el hard. De lo contrario, lo hacemos soft para asegurar */
-    if(soft_del === "false") {
-        await userModel.deleteOne({ _id : dataToken._id });
-        res.status(200).send("HARD_DEL");
-    } else {
-        await userModel.delete({ _id : dataToken._id } );
-        res.status(200).send("SOFT_DEL");
+        /* Si tiene valor false, hacemos el hard. De lo contrario, lo hacemos soft para asegurar */
+        if(soft_del === "false") {
+            await userModel.deleteOne({ _id : dataToken._id });
+            res.status(200).send("HARD_DEL");
+        } else {
+            await userModel.delete({ _id : dataToken._id } );
+            res.status(200).send("SOFT_DEL");
+        }
+    } catch(err) {
+        handleHttpError(res, "ERR_DELETE_USER", 500);
     }
 }
 
 const addUserLogo = async (req, res) => {
-    const token = req.headers.authorization.split(' ').pop();
-    const dataToken = await verifyToken(token);
-    
-    const fileBuffer = req.file.buffer;
-    const fileName = req.file.originalname;
-    const pinataResponse = await uploadToPinata(fileBuffer, fileName);
-    const ipfsFile = pinataResponse.IpfsHash;
-    const ipfs = `https://${process.env.PINATA_GATEWAY_URL}/ipfs/${ipfsFile}`
-    const data = await userModel.findByIdAndUpdate(dataToken._id, { logo: ipfs }, { new: true}).select("-password");
-    res.status(200).send(data);
+    try {
+        const token = req.headers.authorization.split(' ').pop();
+        const dataToken = await verifyToken(token);
+        
+        if(!req.file) {
+            handleHttpError(res, "NO_FILE", 400);
+            return;
+        }
+
+        const fileBuffer = req.file.buffer;
+        const fileName = req.file.originalname;
+        const pinataResponse = await uploadToPinata(fileBuffer, fileName);
+        const ipfsFile = pinataResponse.IpfsHash;
+        const ipfs = `https://${process.env.PINATA_GATEWAY_URL}/ipfs/${ipfsFile}`
+        const data = await userModel.findByIdAndUpdate(dataToken._id, { logo: ipfs }, { new: true}).select("-password");
+        res.status(200).send(data);
+    } catch(err) {
+        handleHttpError(res, "ERR_ADD_USER_LOGO", 500);
+    }
 }
 
 const addCompany = async (req, res) => {
+    try {
+        const { company } = matchedData(req);
+        const token = req.headers.authorization.split(' ').pop();
+        const dataToken = await verifyToken(token);
 
-    const { company} = matchedData(req);
-
-    const token = req.headers.authorization.split(' ').pop();
-    const dataToken = await verifyToken(token);
-
-    const data = await userModel.findByIdAndUpdate(dataToken._id, { company: company }, { new: true});
-
-    res.status(200).send("ACK");
-
+        await userModel.findByIdAndUpdate(dataToken._id, { company: company }, { new: true});
+        res.status(200).send("ACK");
+    } catch(err) {
+        handleHttpError(res, "ERR_ADD_COMPANY", 500);
+    }
 }
 
 const setRecoverCode = async (req, res) => {
-    const { email } = matchedData(req);
-
-    const updatedUser = await userModel.findOneAndUpdate({email: email},
-        {reset_code: Math.floor(100000 + Math.random() * 899999).toString()},{ new: true, select: 'email status role _id' });
+    try {
+        const { email } = matchedData(req);
+        const updatedUser = await userModel.findOneAndUpdate(
+            {email: email},
+            {reset_code: Math.floor(100000 + Math.random() * 899999).toString()},
+            { new: true, select: 'email status role _id' }
+        );
 
         if(updatedUser == null) {
-            res.status(404).send("NOT_FOUND");
+            handleHttpError(res, "NOT_FOUND", 404);
             return;
         }
     
-    res.status(200).send({ user: updatedUser });
-
+        res.status(200).send({ user: updatedUser });
+    } catch(err) {
+        handleHttpError(res, "ERR_SET_RECOVER_CODE", 500);
+    }
 }
 
 const validatePassReset = async (req, res) => {
-    const { email, code} = matchedData(req);
+    try {
+        const { email, code } = matchedData(req);
+        const user = await userModel.findOne({ email: email });
 
-    // Meto gestion de errores mas adelante
-    const user = await userModel.findOne({ email: email });
+        if(!user) {
+            handleHttpError(res, "USER_NOT_FOUND", 404);
+            return;
+        }
 
-    /* Verificar codigo con base de datos */
-    if(code === user.reset_code) {
-        await userModel.findOneAndUpdate({email: email}, { reset_code: null, reset_attempts:0 }); /* anulamos el codigo de reseteo */
-        const token = tokenSign(user);
-        res.status(200).send({ token : token });
-    } else {
-        await userModel.findOneAndUpdate({email: email}, { $inc: { reset_attempts: 1 } });
-        res.status(400).send("INVALID_RESET_CODE");
+        /* Verificar codigo con base de datos */
+        if(code === user.reset_code) {
+            await userModel.findOneAndUpdate(
+                {email: email}, 
+                { reset_code: null, reset_attempts:0 }
+            );
+            const token = await tokenSign(user);
+            res.status(200).send({ token: token });
+        } else {
+            await userModel.findOneAndUpdate(
+                {email: email}, 
+                { $inc: { reset_attempts: 1 } }
+            );
+            handleHttpError(res, "INVALID_RESET_CODE", 400);
+        }
+    } catch(err) {
+        handleHttpError(res, "ERR_VALIDATE_PASS_RESET", 500);
     }
-
 }
 
 const changePassword = async (req, res) => {
-    
-    /* Sacamos el id del token */
-    const token = req.headers.authorization.split(' ').pop();
-    const dataToken = await verifyToken(token);
+    try {
+        /* Sacamos el id del token */
+        const token = req.headers.authorization.split(' ').pop();
+        const dataToken = await verifyToken(token);
 
-    /* Y la pass del body */
-    const { password } = matchedData(req);
+        /* Y la pass del body */
+        const { password } = matchedData(req);
 
-    const updatedUser = await userModel.findByIdAndUpdate(dataToken._id, { password: await encrypt(password)}, { new: true });
-    res.status(200).send("ACK");
-    
-
+        await userModel.findByIdAndUpdate(
+            dataToken._id, 
+            { password: await encrypt(password)}, 
+            { new: true }
+        );
+        res.status(200).send("ACK");
+    } catch(err) {
+        handleHttpError(res, "ERR_CHANGE_PASSWORD", 500);
+    }
 }
 
 const inviteGuest = async (req, res) => {
-    /* En los docs de Ricardo no viene muy claro, pero interpreto que un invitado se registra como
-    guest sin necesidad de pass y simplemente recibe un token para una especie de sesion temporal, haciendo que un user
-    tenga que invitarle cada vez que quiera acceder a la plataforma */
-    
-    const {name, surnames, email, company } = matchedData(req);
-    const guestUser = {
-        name: name,
-        surnames: surnames,
-        email: email,
-        company: company
-    };
-    guestUser.role = 'guest';
+    try {
+        const {name, surnames, email, company } = matchedData(req);
+        const guestUser = {
+            name: name,
+            surnames: surnames,
+            email: email,
+            company: company,
+            role: 'guest'
+        };
 
-    if(await userModel.findOne({ email: email}) != null) {
-        res.status(409).send("USER_EXISTS");
-        return;
-    } 
+        const existingUser = await userModel.findOne({ email });
+        if(existingUser) {
+            handleHttpError(res, "USER_EXISTS", 409);
+            return;
+        } 
 
-    const createdGuest = await userModel.create(guestUser);
-    const selectedGuest = await userModel.findById(createdGuest._id).select('email status role _id');
+        const createdGuest = await userModel.create(guestUser);
+        const selectedGuest = await userModel.findById(createdGuest._id).select('email status role _id');
 
-    const token = await tokenSign(selectedGuest);
-    res.status(200).send({ token: token, user: selectedGuest })
-    
+        const token = await tokenSign(selectedGuest);
+        res.status(200).send({ token: token, user: selectedGuest });
+    } catch(err) {
+        handleHttpError(res, "ERR_INVITE_GUEST", 500);
+    }
 }
 
-module.exports = { getUser, registerUser, validateUser, loginUser, updateUser, deleteUser, addUserLogo, addCompany, setRecoverCode, validatePassReset, changePassword, inviteGuest }
+module.exports = { 
+    getUser, 
+    registerUser, 
+    validateUser, 
+    loginUser, 
+    updateUser, 
+    deleteUser, 
+    addUserLogo, 
+    addCompany, 
+    setRecoverCode, 
+    validatePassReset, 
+    changePassword, 
+    inviteGuest 
+};

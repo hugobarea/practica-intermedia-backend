@@ -5,7 +5,7 @@ const validatorPutRegister = [
     /* Omito el mail (en la api de Ricardo viene) ya que realmente no hace falta */
     check("name").exists().notEmpty(),
     check("surnames").exists().notEmpty(),
-    check("nif").exists().isLength(9),
+    check("nif").exists().isLength({ min: 9, max: 9}),
     (req, res, next) => validateResults(req, res, next)
 ];
 
