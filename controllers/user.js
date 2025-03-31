@@ -1,5 +1,6 @@
 /* Dependencias */
 const { userModel } = require('../models');
+const { matchedData } = require("express-validator")
 const { tokenSign, verifyToken } = require('../utils/handleJwt.js');
 const { encrypt, compare } = require('../utils/handlePassword.js');
 const { uploadToPinata } = require('../utils/handleUploadIPFS.js');
@@ -16,18 +17,17 @@ const getUser = async (req, res) => {
 
 // Necesita email y password
 const registerUser = async (req, res) => {
-    
-    const user = req.body;
+    const { email, password } = matchedData(req);
     
     /* Se crea el objeto user, los intentos y el estado se ponen por defecto */
     const user_db = {
-        email: user.email,
-        password: await encrypt(user.password),
+        email: email,
+        password: await encrypt(password),
         code: Math.floor(100000 + Math.random() * 899999).toString(), // Genera un número aleatorio entre 100000 y 999999
     };
 
     /* Nos aseguramos de que no exista un usuario con el mismo mail */
-    if(await userModel.findOne({ email: user.email})) {
+    if(await userModel.findOne({ email: req.email})) {
         res.status(409).send("ALREADY_REGISTERED");
         return;
     }
@@ -49,11 +49,11 @@ const registerUser = async (req, res) => {
 }
 
 const validateUser = async (req, res) => {
-
     /* Sacamos el token JWT y el código que ha pasado el usuario */
     const token = req.headers.authorization.split(' ').pop();
+
+    const { code } = matchedData(req);
     const dataToken = await verifyToken(token);
-    const { code } = req.body; 
 
     const user = await userModel.findById(dataToken._id);
 
@@ -70,7 +70,8 @@ const validateUser = async (req, res) => {
 
 const loginUser = async (req, res) => {
 
-    const { email, password } = req.body;
+    req = matchedData(req);
+    const { email, password } = req;
 
     const user = await userModel.findOne({ email: email });
 
@@ -106,21 +107,20 @@ const loginUser = async (req, res) => {
 }
 
 const updateUser = async (req, res) => {
+    /* Sacamos el token JWT que ha pasado el usuario */
+    const token = req.headers.authorization.split(' ').pop();
+    const dataToken = await verifyToken(token);
 
-        /* Sacamos los campos de la petición */
-        const { email, name, surnames, nif } = req.body;
+    /* Sacamos los campos de la peticion, el email lo quito ya que con el token no haria falta */
+    const { name, surnames, nif } = matchedData(req);
 
-        /* Sacamos el token JWT que ha pasado el usuario */
-        const token = req.headers.authorization.split(' ').pop();
-        const dataToken = await verifyToken(token);
+    /* Actualizamos el usuario con los datos nuevos y lo enviamos */
+    const updatedUser = await userModel.findByIdAndUpdate(dataToken._id, { name: name, surnames: surnames, nif: nif},
+        {new: true}, /* para asegurarnos que devuelve el usuario actualizado*/
+    ).select("-password");
 
-        /* Actualizamos el usuario con los datos nuevos y lo enviamos */
-        const updatedUser = await userModel.findByIdAndUpdate(dataToken._id, { name: name, surnames: surnames, nif: nif},
-            {new: true}, /* para asegurarnos que devuelve el usuario actualizado*/
-        ).select("-password");
-
-        console.log(updatedUser);
-        res.status(200).send(updatedUser);
+    console.log(updatedUser);
+    res.status(200).send(updatedUser);
 
 }
 
@@ -141,7 +141,6 @@ const deleteUser = async (req, res) => {
 }
 
 const addUserLogo = async (req, res) => {
-    
     const token = req.headers.authorization.split(' ').pop();
     const dataToken = await verifyToken(token);
     
@@ -156,7 +155,7 @@ const addUserLogo = async (req, res) => {
 
 const addCompany = async (req, res) => {
 
-    const { company } = req.body;
+    const { company} = matchedData(req);
 
     const token = req.headers.authorization.split(' ').pop();
     const dataToken = await verifyToken(token);
@@ -168,18 +167,22 @@ const addCompany = async (req, res) => {
 }
 
 const setRecoverCode = async (req, res) => {
-    const { email } = req.body;
+    const { email } = matchedData(req);
 
     const updatedUser = await userModel.findOneAndUpdate({email: email},
-        {reset_code: Math.floor(100000 + Math.random() * 899999).toString()},{ new: true, select: '-password' });
+        {reset_code: Math.floor(100000 + Math.random() * 899999).toString()},{ new: true, select: 'email status role _id' });
+
+        if(updatedUser == null) {
+            res.status(404).send("NOT_FOUND");
+            return;
+        }
     
     res.status(200).send({ user: updatedUser });
 
 }
 
 const validatePassReset = async (req, res) => {
-    const { email, code } = req.body;
-
+    const { email, code} = matchedData(req);
 
     // Meto gestion de errores mas adelante
     const user = await userModel.findOne({ email: email });
@@ -197,13 +200,14 @@ const validatePassReset = async (req, res) => {
 }
 
 const changePassword = async (req, res) => {
-
+    
     /* Sacamos el id del token */
     const token = req.headers.authorization.split(' ').pop();
     const dataToken = await verifyToken(token);
 
     /* Y la pass del body */
-    const { password } = req.body; 
+    const { password } = matchedData(req);
+
     const updatedUser = await userModel.findByIdAndUpdate(dataToken._id, { password: await encrypt(password)}, { new: true });
     res.status(200).send("ACK");
     
@@ -215,12 +219,25 @@ const inviteGuest = async (req, res) => {
     guest sin necesidad de pass y simplemente recibe un token para una especie de sesion temporal, haciendo que un user
     tenga que invitarle cada vez que quiera acceder a la plataforma */
     
-    const guestUser = req.body;
+    const {name, surnames, email, company } = matchedData(req);
+    const guestUser = {
+        name: name,
+        surnames: surnames,
+        email: email,
+        company: company
+    };
     guestUser.role = 'guest';
 
+    if(await userModel.findOne({ email: email}) != null) {
+        res.status(409).send("USER_EXISTS");
+        return;
+    } 
+
     const createdGuest = await userModel.create(guestUser);
-    const token = await tokenSign(createdGuest);
-    res.status(200).send({ token: token, user: createdGuest })
+    const selectedGuest = await userModel.findById(createdGuest._id).select('email status role _id');
+
+    const token = await tokenSign(selectedGuest);
+    res.status(200).send({ token: token, user: selectedGuest })
     
 }
 
