@@ -2,6 +2,8 @@
 const express = require('express');
 const app = express();
 const dbConnect = require('./config/mongo.js');
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpecs = require("./docs/swagger.js");
 
 /* Implementar variables de entorno */
 require('dotenv').config();
@@ -12,6 +14,7 @@ app.use(express.json()); // Para poder usar req.body
 
 
 dbConnect();
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 app.use("/api", require("./routes/index.js"));
 
 app.get("/", (req, res) => {
